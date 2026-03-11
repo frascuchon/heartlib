@@ -9,3 +9,12 @@ checkpoint/
 build/
 .idea/
 ckpt/
+
+# Local dev environment
+.venv/
+.claude/
+CLAUDE.md
+
+# Docs / research (not published yet)
+docs/
+papers/
