@@ -328,9 +328,10 @@ class HeartMuLaGenPipeline:
 
         max_audio_frames = max_audio_length_ms // 80
         min_audio_frames = min_audio_length_ms // 80
+        last_valid_token = curr_token
 
         for i in tqdm(range(max_audio_frames)):
-            curr_token, curr_token_mask = _pad_audio_token(curr_token)
+            curr_token, curr_token_mask = _pad_audio_token(last_valid_token)
             with torch.autocast(
                 device_type=self.mula_device.type, dtype=self.mula_dtype
             ):
@@ -348,6 +349,7 @@ class HeartMuLaGenPipeline:
                 if i + 1 >= min_audio_frames:
                     break
                 continue   # skip EOS frame, keep generating
+            last_valid_token = curr_token
             frames.append(curr_token[0:1,])
         frames = torch.stack(frames).permute(1, 2, 0).squeeze(0)
         self._unload()
