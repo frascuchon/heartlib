@@ -26,7 +26,7 @@ API_KEY    = os.environ.get("HEARTMULA_API_KEY",    "")
 # Imagen remota
 # ---------------------------------------------------------------------------
 
-HEARTLIB_REPO = "https://github.com/HeartMuLa/heartlib.git"
+HEARTLIB_REPO = "https://github.com/frascuchon/heartlib.git"
 
 _image = (
     modal.Image.debian_slim(python_version="3.12")
@@ -244,7 +244,7 @@ class HeartMuLaService:
     # POST /generate  →  audio/wav  (o JSON+base64)
     # ------------------------------------------------------------------
 
-    @modal.web_endpoint(method="POST", docs=True)
+    @modal.fastapi_endpoint(method="POST", docs=True)
     def generate(self, req: GenerateRequest, authorization: str | None = Header(default=None)):
         """
         Genera audio musical a partir de tags y/o letra.
@@ -290,7 +290,7 @@ class HeartMuLaService:
     # GET /health
     # ------------------------------------------------------------------
 
-    @modal.web_endpoint(method="GET", docs=True)
+    @modal.fastapi_endpoint(method="GET", docs=True)
     def health(self):
         """Comprueba que el servicio y el modelo están listos."""
         from fastapi.responses import JSONResponse
@@ -306,7 +306,7 @@ class HeartMuLaService:
     # GET /info
     # ------------------------------------------------------------------
 
-    @modal.web_endpoint(method="GET", docs=True)
+    @modal.fastapi_endpoint(method="GET", docs=True)
     def info(self):
         """Devuelve la configuración de despliegue del servicio."""
         from fastapi.responses import JSONResponse
