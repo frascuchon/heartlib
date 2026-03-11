@@ -31,7 +31,25 @@ def str2device(value):
     return torch.device(value)
 
 
+def _default_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def _default_mula_dtype(device: str) -> str:
+    # bfloat16 is unsupported on MPS; use float16 there instead
+    if device == "mps":
+        return "float16"
+    if device == "cpu":
+        return "float32"
+    return "bfloat16"
+
+
 def parse_args():
+    _device = _default_device()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--version", type=str, default="3B")
@@ -39,13 +57,14 @@ def parse_args():
     parser.add_argument("--tags", type=str, default="./assets/tags.txt")
     parser.add_argument("--save_path", type=str, default="./assets/output.mp3")
 
-    parser.add_argument("--max_audio_length_ms", type=int, default=240_000)
+    parser.add_argument("--max_audio_length_ms", type=int, default=240_000,
+                        help="Maximum generation length in ms.")
     parser.add_argument("--topk", type=int, default=50)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--cfg_scale", type=float, default=1.5)
-    parser.add_argument("--mula_device", type=str2device, default="cuda")
-    parser.add_argument("--codec_device", type=str2device, default="cuda")
-    parser.add_argument("--mula_dtype", type=str2dtype, default="bfloat16")
+    parser.add_argument("--mula_device", type=str2device, default=_device)
+    parser.add_argument("--codec_device", type=str2device, default=_device)
+    parser.add_argument("--mula_dtype", type=str2dtype, default=_default_mula_dtype(_device))
     parser.add_argument("--codec_dtype", type=str2dtype, default="float32")
     parser.add_argument("--lazy_load", type=str2bool, default=False)
     return parser.parse_args()

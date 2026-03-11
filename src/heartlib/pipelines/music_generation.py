@@ -151,32 +151,45 @@ class HeartMuLaGenPipeline:
         )
         return self._codec
 
+    @staticmethod
+    def _get_device_memory_gb(device: torch.device) -> Optional[float]:
+        if device.type == "cuda":
+            return torch.cuda.memory_allocated(device) / 1024**3
+        return None
+
+    @staticmethod
+    def _clear_device_cache(device: torch.device):
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+        elif device.type == "mps":
+            torch.mps.empty_cache()
+
     def _unload(self):
         if not self.lazy_load:
             return
         if isinstance(self._mula, HeartMuLa):
             print(f"You have set lazy_load=True. Unloading HeartMuLa from device.")
-            print(
-                f"CUDA memory before unloading: {torch.cuda.memory_allocated(self.mula_device) / 1024**3:.2f} GB"
-            )
+            mem_before = self._get_device_memory_gb(self.mula_device)
+            if mem_before is not None:
+                print(f"Device memory before unloading: {mem_before:.2f} GB")
             del self._mula
             gc.collect()
-            torch.cuda.empty_cache()
-            print(
-                f"CUDA memory after unloading: {torch.cuda.memory_allocated(self.mula_device) / 1024**3:.2f} GB"
-            )
+            self._clear_device_cache(self.mula_device)
+            mem_after = self._get_device_memory_gb(self.mula_device)
+            if mem_after is not None:
+                print(f"Device memory after unloading: {mem_after:.2f} GB")
             self._mula = None
         if isinstance(self._codec, HeartCodec):
             print(f"You have set lazy_load=True. Unloading HeartCodec from device.")
-            print(
-                f"CUDA memory before unloading: {torch.cuda.memory_allocated(self.codec_device) / 1024**3:.2f} GB"
-            )
+            mem_before = self._get_device_memory_gb(self.codec_device)
+            if mem_before is not None:
+                print(f"Device memory before unloading: {mem_before:.2f} GB")
             del self._codec
             gc.collect()
-            torch.cuda.empty_cache()
-            print(
-                f"CUDA memory after unloading: {torch.cuda.memory_allocated(self.codec_device) / 1024**3:.2f} GB"
-            )
+            self._clear_device_cache(self.codec_device)
+            mem_after = self._get_device_memory_gb(self.codec_device)
+            if mem_after is not None:
+                print(f"Device memory after unloading: {mem_after:.2f} GB")
             self._codec = None
         return
 
@@ -339,7 +352,17 @@ class HeartMuLaGenPipeline:
         frames = model_outputs["frames"].to(self.codec_device)
         wav = self.codec.detokenize(frames)
         self._unload()
-        torchaudio.save(save_path, wav.to(torch.float32).cpu(), 48000)
+        wav_cpu = wav.to(torch.float32).cpu()
+        try:
+            torchaudio.save(save_path, wav_cpu, 48000)
+        except (ImportError, RuntimeError):
+            # Fallback: save as WAV via soundfile (works on all platforms without torchcodec)
+            import soundfile as sf
+            import os
+            wav_path = os.path.splitext(save_path)[0] + ".wav"
+            sf.write(wav_path, wav_cpu.squeeze(0).numpy().T, 48000)
+            if wav_path != save_path:
+                print(f"Note: saved as WAV instead of MP3 (torchcodec not available): {wav_path}")
 
     def __call__(self, inputs: Dict[str, Any], **kwargs):
         preprocess_kwargs, forward_kwargs, postprocess_kwargs = (
