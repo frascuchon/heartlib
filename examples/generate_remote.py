@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument(
         "--max-audio-length-ms",
         type=int,
-        default=30_000,
+        default=120_000,
         help="Maximum audio duration in milliseconds.",
     )
     parser.add_argument(
@@ -103,6 +103,12 @@ def parse_args():
 def main():
     args = parse_args()
 
+    if args.min_audio_length_ms > args.max_audio_length_ms:
+        raise SystemExit(
+            f"Error: --min-audio-length-ms ({args.min_audio_length_ms}) "
+            f"cannot exceed --max-audio-length-ms ({args.max_audio_length_ms})"
+        )
+
     lyrics = args.lyrics
     if args.lyrics_file is not None:
         with open(args.lyrics_file, "r", encoding="utf-8") as f:
@@ -120,7 +126,7 @@ def main():
         "response_format": "wav",
     }
 
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "Connection": "close"}
     if args.api_key:
         headers["Authorization"] = f"Bearer {args.api_key}"
 
