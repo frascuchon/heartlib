@@ -59,6 +59,8 @@ def parse_args():
 
     parser.add_argument("--max_audio_length_ms", type=int, default=240_000,
                         help="Maximum generation length in ms.")
+    parser.add_argument("--min_audio_length_ms", type=int, default=0,
+                        help="Minimum generation length in ms — EOS is ignored until this is reached.")
     parser.add_argument("--topk", type=int, default=50)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--cfg_scale", type=float, default=1.5)
@@ -92,6 +94,7 @@ if __name__ == "__main__":
                 "tags": args.tags,
             },
             max_audio_length_ms=args.max_audio_length_ms,
+            min_audio_length_ms=args.min_audio_length_ms,
             save_path=args.save_path,
             topk=args.topk,
             temperature=args.temperature,

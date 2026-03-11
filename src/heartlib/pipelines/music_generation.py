@@ -197,6 +197,7 @@ class HeartMuLaGenPipeline:
         preprocess_kwargs = {"cfg_scale": kwargs.get("cfg_scale", 1.5)}
         forward_kwargs = {
             "max_audio_length_ms": kwargs.get("max_audio_length_ms", 120_000),
+            "min_audio_length_ms": kwargs.get("min_audio_length_ms", 0),
             "temperature": kwargs.get("temperature", 1.0),
             "topk": kwargs.get("topk", 50),
             "cfg_scale": kwargs.get("cfg_scale", 1.5),
@@ -281,6 +282,7 @@ class HeartMuLaGenPipeline:
         self,
         model_inputs: Dict[str, Any],
         max_audio_length_ms: int,
+        min_audio_length_ms: int,
         temperature: float,
         topk: int,
         cfg_scale: float,
@@ -325,6 +327,7 @@ class HeartMuLaGenPipeline:
             return padded_token, padded_token_mask
 
         max_audio_frames = max_audio_length_ms // 80
+        min_audio_frames = min_audio_length_ms // 80
 
         for i in tqdm(range(max_audio_frames)):
             curr_token, curr_token_mask = _pad_audio_token(curr_token)
@@ -342,7 +345,9 @@ class HeartMuLaGenPipeline:
                     starts=None,
                 )
             if torch.any(curr_token[0:1, :] >= self.config.audio_eos_id):
-                break
+                if i + 1 >= min_audio_frames:
+                    break
+                continue   # skip EOS frame, keep generating
             frames.append(curr_token[0:1,])
         frames = torch.stack(frames).permute(1, 2, 0).squeeze(0)
         self._unload()
